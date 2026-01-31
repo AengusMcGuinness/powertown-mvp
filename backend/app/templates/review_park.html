@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Powertown MVP — Review Park</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; max-width: 900px; }
+      a { text-decoration: none; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-top: 12px; }
+      .muted { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>{{ park.name }}</h1>
+    <p class="muted">{{ park.location or "" }}</p>
+
+    <p>
+      <a href="/capture">← New capture</a>
+    </p>
+
+    <h2>Buildings</h2>
+
+    {% if buildings|length == 0 %}
+      <p class="muted">No buildings yet.</p>
+    {% endif %}
+
+    {% for b in buildings %}
+      <div class="card">
+        <div><strong><a href="/review/buildings/{{ b.id }}">{{ b.name }}</a></strong></div>
+        <div class="muted">{{ b.address or "" }}</div>
+        <div class="muted">Created: {{ b.created_at }}</div>
+      </div>
+    {% endfor %}
+  </body>
+</html>

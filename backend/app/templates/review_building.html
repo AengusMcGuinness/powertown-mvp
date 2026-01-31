@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Powertown MVP — Building Dossier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; max-width: 980px; }
+      .muted { color: #666; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-top: 14px; }
+      img { max-width: 100%; border-radius: 10px; border: 1px solid #eee; }
+      .media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+      a { text-decoration: none; }
+      code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>{{ building.name }}</h1>
+    <p class="muted">{{ building.address or "" }}</p>
+
+    <p>
+      <a href="/capture">← New capture</a>
+      <span class="muted"> | </span>
+      <a href="/review/parks/{{ building.industrial_park_id }}">← Back to park</a>
+      <span class="muted"> | </span>
+      <a href="/docs" target="_blank">API docs</a>
+    </p>
+
+    <h2>Observations</h2>
+
+    {% if observations|length == 0 %}
+      <p class="muted">No observations yet.</p>
+    {% endif %}
+
+    {% for o in observations %}
+      <div class="card">
+        <div>
+          <strong>Observation #{{ o.id }}</strong>
+          <span class="muted"> — {{ o.created_at }}</span>
+          {% if o.observer %}
+            <span class="muted"> — {{ o.observer }}</span>
+          {% endif %}
+        </div>
+
+        {% if o.note_text %}
+          <p>{{ o.note_text }}</p>
+        {% else %}
+          <p class="muted">(no notes)</p>
+        {% endif %}
+
+        {% set media = media_by_obs.get(o.id, []) %}
+        {% if media|length > 0 %}
+          <div class="media-grid">
+            {% for m in media %}
+              {% if m.media_type == "photo" %}
+                <a href="{{ m.file_path }}" target="_blank">
+                  <img src="{{ m.file_path }}" alt="photo" />
+                </a>
+              {% else %}
+                <div>
+                  <div><strong>{{ m.media_type }}</strong></div>
+                  <div class="muted"><a href="{{ m.file_path }}" target="_blank">{{ m.file_path }}</a></div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted">No media attached.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </body>
+</html>
