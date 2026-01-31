@@ -84,12 +84,46 @@ This will create a local SQLite database at: `backend/app/app.db`
 ```
 uvicorn backend.app.main:app --reload
 ```
+# Demo (Recommended)
 
-## Development Notes
+Run the full demo locally with seeded data:
 
-- Database tables are created explicitly via `backend/scripts/init_db.py`.
-- Server startup is intentionally side-effect free.
-- This mirrors production workflows where schema changes are controlled and explicit.
-- For MVP speed, SQLite is used; the data model is compatible with Postgres
+```bash
+python -m backend.scripts.init_db
+python -m backend.scripts.seed_demo --reset
+uvicorn backend.app.main:app --reload
+```
+Then open:
+- Review home: http://127.0.0.1:8000/review
+- Capture form: http://127.0.0.1:8000/capture
 
+This demo includes:
+- 1 industrial park
+- 8 buildings
+- multiple observations per building
+- attached media
+- readiness scores that respond to observation content
+
+## Battery Readiness Scoring
+
+Each building is assigned a simple, transparent readiness score (0–100) based on observed signals across all notes:
+
+Signals include:
+- **Load indicators** (e.g., manufacturing, cold storage, HVAC)
+- **Electrical infrastructure** (e.g., transformers, switchgear, substations)
+- **On-site generation** (e.g., solar)
+- **Siting space** (e.g., large lots, parking, yards)
+- **Contacts identified** (e.g., facilities manager, business card)
+
+The score is intentionally heuristic and explainable, designed to support human review rather than replace it.
+
+## Features
+
+- Server-rendered web UI for field capture and review
+- Append-only observations with timestamping
+- Media upload and inline rendering (photos, audio, cards)
+- Park- and building-level review pages
+- Explainable battery readiness scoring
+- CSV export for downstream mapping and analysis
+- SQLite-backed relational data model
 
