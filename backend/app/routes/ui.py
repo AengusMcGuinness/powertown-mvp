@@ -30,10 +30,16 @@ def review_home(
     request: Request,
     db: Session = Depends(get_db),
     min_score: int = 0,
-    since_hours: Optional[int] = None,
+    since_hours: str | None = None,
     sort: str = "last_activity",  # or "best_score"
     only_active: bool = False,
 ):
+    since_hours_int = None
+    if since_hours:
+        try:
+            since_hours_int = int(since_hours)
+        except ValueError:
+            since_hours_int = None
     # Show all parks (most recently created first)
     parks = (
         db.query(models.IndustrialPark)
@@ -88,8 +94,8 @@ def review_home(
 
     # Apply filters
     cutoff = None
-    if since_hours is not None:
-        cutoff = datetime.utcnow() - timedelta(hours=since_hours)
+    if since_hours_int is not None:
+        cutoff = datetime.utcnow() - timedelta(hours=since_hours_int)
 
     filtered = []
     for c in park_cards:
@@ -199,7 +205,7 @@ def review_home(
             "recent_activity": recent_activity,
             "filters": {
                 "min_score": min_score,
-                "since_hours": since_hours or "",
+                "since_hours": since_hours_int or "",
                 "sort": sort,
                 "only_active": only_active,
             },
