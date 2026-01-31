@@ -66,3 +66,30 @@ This MVP focuses on that core workflow.
 git clone git@github.com:AengusMcGuinness/powertown-mvp.git
 cd powertown-mvp
 ```
+### 2. Create and activate a virtual environment
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+### 3. Install dependencies
+```
+pip install -r requirements.txt
+```
+### 4. Initialize the database (one-time)
+```
+python -m backend.scripts.init_db
+```
+This will create a local SQLite database at: `backend/app/app.db`
+### 5. Run the server
+```
+uvicorn backend.app.main:app --reload
+```
+
+## Development Notes
+
+- Database tables are created explicitly via `backend/scripts/init_db.py`.
+- Server startup is intentionally side-effect free.
+- This mirrors production workflows where schema changes are controlled and explicit.
+- For MVP speed, SQLite is used; the data model is compatible with Postgres
+
+
