@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.app.db import init_db, DB_URL
+from backend.app.db import DB_URL, init_db
 
 
 def main() -> None:

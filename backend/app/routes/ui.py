@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-
-from backend.app.db import get_db
-from backend.app import models
-from backend.app.services.storage import build_upload_path, to_served_url
-from backend.app.services.scoring import score_building
-
 from datetime import datetime, timedelta
 from typing import Optional
 
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Request,
+                     UploadFile)
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+from backend.app import models
+from backend.app.db import get_db
+from backend.app.services.scoring import score_building
+from backend.app.services.storage import build_upload_path, to_served_url
 
 router = APIRouter()
 
@@ -23,6 +23,7 @@ def _truncate(s: str | None, n: int = 160) -> str:
         return ""
     s = " ".join(s.split())
     return s if len(s) <= n else s[:n] + "…"
+
 
 @router.get("/review")
 def review_home(
@@ -52,7 +53,6 @@ def review_home(
 
         last_obs = None
 
-        
         if building_ids:
             last_obs = (
                 db.query(models.Observation)
@@ -60,8 +60,6 @@ def review_home(
                 .order_by(models.Observation.created_at.desc())
                 .first()
             )
-
-
 
         best_score = None
         if building_ids:
@@ -78,7 +76,7 @@ def review_home(
                 if s.score > best:
                     best = s.score
             best_score = best if best >= 0 else None
-        
+
         park_cards.append(
             {
                 "park": p,
@@ -117,14 +115,23 @@ def review_home(
 
     # Sorting
     if sort == "best_score":
-        park_cards.sort(key=lambda x: (x["best_score"] is None, -(x["best_score"] or 0), x["last_activity"] is None, x["last_activity"]),)
+        park_cards.sort(
+            key=lambda x: (
+                x["best_score"] is None,
+                -(x["best_score"] or 0),
+                x["last_activity"] is None,
+                x["last_activity"],
+            ),
+        )
     else:
         # default: last_activity desc, None last
-        park_cards.sort(key=lambda x: (x["last_activity"] is None, x["last_activity"]), reverse=True)
-        
+        park_cards.sort(
+            key=lambda x: (x["last_activity"] is None, x["last_activity"]), reverse=True
+        )
+
     # Global recent activity (last 15 observations across all parks)
     recent_activity = []
-    
+
     recent_obs = (
         db.query(models.Observation)
         .order_by(models.Observation.created_at.desc())
@@ -137,9 +144,7 @@ def review_home(
         building_ids = [o.building_id for o in recent_obs]
 
         buildings = (
-            db.query(models.Building)
-            .filter(models.Building.id.in_(building_ids))
-            .all()
+            db.query(models.Building).filter(models.Building.id.in_(building_ids)).all()
         )
         buildings_by_id = {b.id: b for b in buildings}
 
@@ -183,22 +188,24 @@ def review_home(
             )
 
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(
-    "review_home.html",
-    {
-        "request": request,
-        "park_cards": park_cards,
-        "recent_activity": recent_activity,
-        "filters": {
-            "min_score": min_score,
-            "since_hours": since_hours or "",
-            "sort": sort,
-            "only_active": only_active,
+        "review_home.html",
+        {
+            "request": request,
+            "park_cards": park_cards,
+            "recent_activity": recent_activity,
+            "filters": {
+                "min_score": min_score,
+                "since_hours": since_hours or "",
+                "sort": sort,
+                "only_active": only_active,
+            },
         },
-    },
-)
+    )
+
 
 def _get_or_create_building(
     db: Session,
@@ -234,12 +241,19 @@ def _get_or_create_building(
     db.refresh(b)
     return b
 
-def _get_or_create_park(db: Session, name: str, location: str | None) -> models.IndustrialPark:
+
+def _get_or_create_park(
+    db: Session, name: str, location: str | None
+) -> models.IndustrialPark:
     name = name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="industrial park name required")
 
-    park = db.query(models.IndustrialPark).filter(models.IndustrialPark.name == name).first()
+    park = (
+        db.query(models.IndustrialPark)
+        .filter(models.IndustrialPark.name == name)
+        .first()
+    )
     if park:
         # If user provided location and we didn't have one, fill it in (nice UX)
         if location and not park.location:
@@ -248,7 +262,9 @@ def _get_or_create_park(db: Session, name: str, location: str | None) -> models.
             db.refresh(park)
         return park
 
-    park = models.IndustrialPark(name=name, location=(location.strip() if location else None))
+    park = models.IndustrialPark(
+        name=name, location=(location.strip() if location else None)
+    )
     db.add(park)
     db.commit()
     db.refresh(park)
@@ -258,10 +274,15 @@ def _get_or_create_park(db: Session, name: str, location: str | None) -> models.
 @router.get("/capture")
 def capture_form(request: Request, db: Session = Depends(get_db)):
     # List parks for a dropdown (optional but helpful)
-    parks = db.query(models.IndustrialPark).order_by(models.IndustrialPark.created_at.desc()).all()
+    parks = (
+        db.query(models.IndustrialPark)
+        .order_by(models.IndustrialPark.created_at.desc())
+        .all()
+    )
 
     # Import templates from main.py without circular import by creating locally here:
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(
@@ -301,7 +322,9 @@ async def capture_submit(
     if park_id:
         park = db.get(models.IndustrialPark, park_id)
         if not park:
-            raise HTTPException(status_code=404, detail="selected industrial park not found")
+            raise HTTPException(
+                status_code=404, detail="selected industrial park not found"
+            )
     else:
         park = _get_or_create_park(db, park_name, park_location)
 
@@ -358,7 +381,7 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
         .filter(models.Building.industrial_park_id == park_id)
         .all()
     )
-    
+
     building_cards = []
     for b in buildings:
         obs_texts = (
@@ -381,13 +404,13 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
         "count_70_plus": sum(1 for s in scores if s >= 70),
         "count_50_plus": sum(1 for s in scores if s >= 50),
     }
-    
+
     top_candidates = building_cards[:3]
-    
+
     # Recent activity feed (last 15 observations across park), including building name
     building_ids = [c["building"].id for c in building_cards]
     recent_activity = []
-    
+
     if building_ids:
         recent_obs = (
             db.query(models.Observation)
@@ -396,10 +419,10 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
             .limit(15)
             .all()
         )
-        
+
         # Build a lookup for building_id -> building
         buildings_by_id = {c["building"].id: c["building"] for c in building_cards}
-        
+
         # Optional: media counts per observation (nice signal)
         obs_ids = [o.id for o in recent_obs]
         media_counts = {}
@@ -426,21 +449,22 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
                     "photo_count": photo_counts.get(o.id, 0),
                 }
             )
-            
+
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(
-    "review_park.html",
-    {
-        "request": request,
-        "park": park,
-        "building_cards": building_cards,
-        "top_candidates": top_candidates,
-        "park_summary": park_summary,
-        "recent_activity": recent_activity,
-    },
-)
+        "review_park.html",
+        {
+            "request": request,
+            "park": park,
+            "building_cards": building_cards,
+            "top_candidates": top_candidates,
+            "park_summary": park_summary,
+            "recent_activity": recent_activity,
+        },
+    )
 
 
 @router.get("/review/buildings/{building_id}")
@@ -457,6 +481,7 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
     )
 
     from backend.app.services.scoring import score_building
+
     score = score_building([o.note_text for o in observations])
 
     obs_ids = [o.id for o in observations]
@@ -473,6 +498,7 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
             media_by_obs.setdefault(m.observation_id, []).append(m)
 
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(
@@ -485,6 +511,7 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
             "score": score,
         },
     )
+
 
 @router.get("/search")
 def search(request: Request, q: str = "", db: Session = Depends(get_db)):
@@ -499,8 +526,8 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
         parks = (
             db.query(models.IndustrialPark)
             .filter(
-                (models.IndustrialPark.name.ilike(like)) |
-                (models.IndustrialPark.location.ilike(like))
+                (models.IndustrialPark.name.ilike(like))
+                | (models.IndustrialPark.location.ilike(like))
             )
             .order_by(models.IndustrialPark.created_at.desc())
             .limit(25)
@@ -510,8 +537,8 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
         buildings = (
             db.query(models.Building)
             .filter(
-                (models.Building.name.ilike(like)) |
-                (models.Building.address.ilike(like))
+                (models.Building.name.ilike(like))
+                | (models.Building.address.ilike(like))
             )
             .order_by(models.Building.created_at.desc())
             .limit(25)
@@ -528,6 +555,7 @@ def search(request: Request, q: str = "", db: Session = Depends(get_db)):
         )
 
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(

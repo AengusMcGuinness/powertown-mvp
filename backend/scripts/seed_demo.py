@@ -7,10 +7,9 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from backend.app.db import SessionLocal, init_db
 from backend.app import models
+from backend.app.db import SessionLocal, init_db
 from backend.app.services.storage import build_upload_path, to_served_url
-
 
 DEMO_PARK_NAME = "Demo Industrial Park"
 DEMO_PARK_LOCATION = "Fall River, MA (demo)"
@@ -28,7 +27,11 @@ def _png_bytes() -> bytes:
 
 
 def _get_or_create_demo_park(db: Session) -> models.IndustrialPark:
-    park = db.query(models.IndustrialPark).filter(models.IndustrialPark.name == DEMO_PARK_NAME).first()
+    park = (
+        db.query(models.IndustrialPark)
+        .filter(models.IndustrialPark.name == DEMO_PARK_NAME)
+        .first()
+    )
     if park:
         # ensure location is set
         if not park.location:
@@ -64,33 +67,51 @@ def _reset_demo_data(db: Session) -> None:
     Deletes existing demo park (and its buildings/observations/media) if present.
     Also cleans up any upload folders for those observations.
     """
-    park = db.query(models.IndustrialPark).filter(models.IndustrialPark.name == DEMO_PARK_NAME).first()
+    park = (
+        db.query(models.IndustrialPark)
+        .filter(models.IndustrialPark.name == DEMO_PARK_NAME)
+        .first()
+    )
     if not park:
         return
 
     # Collect buildings
-    buildings = db.query(models.Building).filter(models.Building.industrial_park_id == park.id).all()
+    buildings = (
+        db.query(models.Building)
+        .filter(models.Building.industrial_park_id == park.id)
+        .all()
+    )
     building_ids = [b.id for b in buildings]
 
     # Collect observations
     observations = []
     if building_ids:
-        observations = db.query(models.Observation).filter(models.Observation.building_id.in_(building_ids)).all()
+        observations = (
+            db.query(models.Observation)
+            .filter(models.Observation.building_id.in_(building_ids))
+            .all()
+        )
     obs_ids = [o.id for o in observations]
 
     # Delete media assets first
     if obs_ids:
-        db.query(models.MediaAsset).filter(models.MediaAsset.observation_id.in_(obs_ids)).delete(synchronize_session=False)
+        db.query(models.MediaAsset).filter(
+            models.MediaAsset.observation_id.in_(obs_ids)
+        ).delete(synchronize_session=False)
         db.commit()
 
     # Delete observation rows
     if obs_ids:
-        db.query(models.Observation).filter(models.Observation.id.in_(obs_ids)).delete(synchronize_session=False)
+        db.query(models.Observation).filter(models.Observation.id.in_(obs_ids)).delete(
+            synchronize_session=False
+        )
         db.commit()
 
     # Delete buildings
     if building_ids:
-        db.query(models.Building).filter(models.Building.id.in_(building_ids)).delete(synchronize_session=False)
+        db.query(models.Building).filter(models.Building.id.in_(building_ids)).delete(
+            synchronize_session=False
+        )
         db.commit()
 
     # Delete the park
@@ -109,7 +130,9 @@ def _create_observation_with_optional_media(
     note_text: str,
     add_photo: bool = False,
 ) -> models.Observation:
-    obs = models.Observation(building_id=building_id, observer=observer, note_text=note_text)
+    obs = models.Observation(
+        building_id=building_id, observer=observer, note_text=note_text
+    )
     db.add(obs)
     db.commit()
     db.refresh(obs)
@@ -242,7 +265,9 @@ def seed_demo(db: Session) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed demo data for Powertown MVP.")
-    parser.add_argument("--reset", action="store_true", help="Delete existing demo data before seeding.")
+    parser.add_argument(
+        "--reset", action="store_true", help="Delete existing demo data before seeding."
+    )
     args = parser.parse_args()
 
     # Ensure tables exist

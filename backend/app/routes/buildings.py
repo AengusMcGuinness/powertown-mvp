@@ -3,9 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.app.db import get_db
 from backend.app import models
-from backend.app.schemas import BuildingCreate, BuildingOut, BuildingDossierOut, ObservationCreate, ObservationOut
+from backend.app.db import get_db
+from backend.app.schemas import (BuildingCreate, BuildingDossierOut,
+                                 BuildingOut, ObservationCreate,
+                                 ObservationOut)
 
 router = APIRouter()
 
@@ -60,7 +62,9 @@ def get_building_dossier(building_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{building_id}/observations", response_model=ObservationOut)
-def add_observation(building_id: int, payload: ObservationCreate, db: Session = Depends(get_db)):
+def add_observation(
+    building_id: int, payload: ObservationCreate, db: Session = Depends(get_db)
+):
     building = db.get(models.Building, building_id)
     if not building:
         raise HTTPException(status_code=404, detail="building not found")

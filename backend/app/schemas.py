@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ---------- Industrial Parks ----------
+
 
 class IndustrialParkCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -24,6 +24,7 @@ class IndustrialParkOut(BaseModel):
 
 
 # ---------- Buildings ----------
+
 
 class BuildingCreate(BaseModel):
     industrial_park_id: int
@@ -44,6 +45,7 @@ class BuildingOut(BaseModel):
 
 # ---------- Observations ----------
 
+
 class ObservationCreate(BaseModel):
     observer: Optional[str] = Field(None, max_length=120)
     note_text: Optional[str] = None
@@ -62,6 +64,7 @@ class ObservationOut(BaseModel):
 
 # ---------- Media (placeholder for now; returned in dossier) ----------
 
+
 class MediaAssetOut(BaseModel):
     id: int
     observation_id: int
@@ -74,6 +77,7 @@ class MediaAssetOut(BaseModel):
 
 
 # ---------- Dossier ----------
+
 
 class BuildingDossierOut(BaseModel):
     building: BuildingOut

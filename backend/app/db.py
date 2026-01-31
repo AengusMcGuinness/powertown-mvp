@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 # Where should the SQLite DB live?
 # Default: backend/app/app.db
@@ -55,4 +55,5 @@ def init_db() -> None:
     Note: This requires backend.app.models to import Base + model classes.
     """
     from backend.app.models import Base  # local import to avoid circular deps
+
     Base.metadata.create_all(bind=engine)

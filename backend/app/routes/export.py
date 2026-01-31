@@ -22,7 +22,9 @@ def _dt_iso(dt: Optional[datetime]) -> str:
 
 @router.get("/csv")
 def export_csv(
-    park_id: Optional[int] = Query(default=None, description="Filter by industrial park id"),
+    park_id: Optional[int] = Query(
+        default=None, description="Filter by industrial park id"
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -34,10 +36,7 @@ def export_csv(
       - readiness score + confidence + drivers
       - observation/media counts + last observed time
     """
-    parks_by_id = {
-        p.id: p
-        for p in db.query(models.IndustrialPark).all()
-    }
+    parks_by_id = {p.id: p for p in db.query(models.IndustrialPark).all()}
 
     # Load buildings (optionally filtered by park)
     q = db.query(models.Building)
@@ -50,22 +49,24 @@ def export_csv(
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow([
-        "park_id",
-        "park_name",
-        "park_location",
-        "building_id",
-        "building_name",
-        "building_address",
-        "readiness_score",
-        "confidence",
-        "top_drivers",
-        "observation_count",
-        "media_count",
-        "photo_count",
-        "last_observed_at",
-        "building_created_at",
-    ])
+    writer.writerow(
+        [
+            "park_id",
+            "park_name",
+            "park_location",
+            "building_id",
+            "building_name",
+            "building_address",
+            "readiness_score",
+            "confidence",
+            "top_drivers",
+            "observation_count",
+            "media_count",
+            "photo_count",
+            "last_observed_at",
+            "building_created_at",
+        ]
+    )
 
     for b in buildings:
         park = parks_by_id.get(b.industrial_park_id)
@@ -89,28 +90,36 @@ def export_csv(
             )
 
         media_count = len(media_assets)
-        photo_count = sum(1 for m in media_assets if (m.media_type or "").lower() == "photo")
+        photo_count = sum(
+            1 for m in media_assets if (m.media_type or "").lower() == "photo"
+        )
 
         last_observed_at = observations[0].created_at if observations else None
 
-        writer.writerow([
-            b.industrial_park_id,
-            park.name if park else "",
-            park.location if park else "",
-            b.id,
-            b.name,
-            b.address or "",
-            score.score,
-            score.confidence,
-            "; ".join(score.drivers),
-            len(observations),
-            media_count,
-            photo_count,
-            _dt_iso(last_observed_at),
-            _dt_iso(getattr(b, "created_at", None)),
-        ])
+        writer.writerow(
+            [
+                b.industrial_park_id,
+                park.name if park else "",
+                park.location if park else "",
+                b.id,
+                b.name,
+                b.address or "",
+                score.score,
+                score.confidence,
+                "; ".join(score.drivers),
+                len(observations),
+                media_count,
+                photo_count,
+                _dt_iso(last_observed_at),
+                _dt_iso(getattr(b, "created_at", None)),
+            ]
+        )
 
-    filename = "powertown_export.csv" if park_id is None else f"powertown_export_park_{park_id}.csv"
+    filename = (
+        "powertown_export.csv"
+        if park_id is None
+        else f"powertown_export_park_{park_id}.csv"
+    )
     csv_bytes = output.getvalue().encode("utf-8")
 
     return Response(

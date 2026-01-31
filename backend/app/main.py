@@ -1,8 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 # If you implement DB table creation on startup, you'll import it here later:
@@ -36,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -46,8 +48,11 @@ def health() -> dict:
 def favicon():
     return Response(status_code=204)
 
+
 # --- Route wiring (add these files as you implement them) ---
-from backend.app.routes import buildings, parks, observations, ui, export, export_observations#, media
+from backend.app.routes import (buildings, export,  # , media
+                                export_observations, observations, parks, ui)
+
 app.include_router(parks.router, prefix="/industrial-parks", tags=["industrial-parks"])
 app.include_router(buildings.router, prefix="/buildings", tags=["buildings"])
 app.include_router(observations.router, prefix="/observations", tags=["observations"])

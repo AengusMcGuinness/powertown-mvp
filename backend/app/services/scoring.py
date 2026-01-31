@@ -7,18 +7,65 @@ from typing import Iterable
 
 @dataclass(frozen=True)
 class ScoreResult:
-    score: int               # 0..100
-    confidence: str          # "low" | "medium" | "high"
-    drivers: list[str]       # explanations
+    score: int  # 0..100
+    confidence: str  # "low" | "medium" | "high"
+    drivers: list[str]  # explanations
 
 
 _RULES = [
-    ("load indicators", 18, [r"\bfactory\b", r"\bwarehouse\b", r"\bmanufactur", r"\brefrigerat", r"\bcold storage\b", r"\bhvac\b", r"\bchiller\b"]),
-    ("electrical infrastructure", 22, [r"\btransformer\b", r"\bswitchgear\b", r"\bsubstation\b", r"\bswitchyard\b", r"\bthree[- ]phase\b"]),
+    (
+        "load indicators",
+        18,
+        [
+            r"\bfactory\b",
+            r"\bwarehouse\b",
+            r"\bmanufactur",
+            r"\brefrigerat",
+            r"\bcold storage\b",
+            r"\bhvac\b",
+            r"\bchiller\b",
+        ],
+    ),
+    (
+        "electrical infrastructure",
+        22,
+        [
+            r"\btransformer\b",
+            r"\bswitchgear\b",
+            r"\bsubstation\b",
+            r"\bswitchyard\b",
+            r"\bthree[- ]phase\b",
+        ],
+    ),
     ("onsite generation", 14, [r"\bsolar\b", r"\bPV\b", r"\binverter\b"]),
-    ("siting space", 18, [r"\blot\b", r"\bparking\b", r"\byard\b", r"\bempty space\b", r"\bpaved\b"]),
-    ("logistics / industrial use", 12, [r"\bloading dock\b", r"\bforklift\b", r"\bdistribution\b", r"\btruck\b", r"\bcontainer\b"]),
-    ("contact captured", 16, [r"\bfacilities\b", r"\bmanager\b", r"\bmaintenance\b", r"\bbusiness card\b", r"\bphone\b", r"@"]),
+    (
+        "siting space",
+        18,
+        [r"\blot\b", r"\bparking\b", r"\byard\b", r"\bempty space\b", r"\bpaved\b"],
+    ),
+    (
+        "logistics / industrial use",
+        12,
+        [
+            r"\bloading dock\b",
+            r"\bforklift\b",
+            r"\bdistribution\b",
+            r"\btruck\b",
+            r"\bcontainer\b",
+        ],
+    ),
+    (
+        "contact captured",
+        16,
+        [
+            r"\bfacilities\b",
+            r"\bmanager\b",
+            r"\bmaintenance\b",
+            r"\bbusiness card\b",
+            r"\bphone\b",
+            r"@",
+        ],
+    ),
 ]
 
 
@@ -26,7 +73,9 @@ def score_building(observation_texts: Iterable[str | None]) -> ScoreResult:
     text = "\n".join([t for t in observation_texts if t]).lower()
 
     if not text.strip():
-        return ScoreResult(score=0, confidence="low", drivers=["No observation text yet."])
+        return ScoreResult(
+            score=0, confidence="low", drivers=["No observation text yet."]
+        )
 
     raw = 0
     drivers: list[str] = []

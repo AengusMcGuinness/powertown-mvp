@@ -20,6 +20,7 @@ def uploads_root() -> Path:
     """
     return Path("data/uploads")
 
+
 def to_served_url(file_path: Path) -> str:
     """
     Convert a disk path under data/uploads into a served URL under /uploads.
@@ -28,6 +29,7 @@ def to_served_url(file_path: Path) -> str:
     """
     p = str(file_path).replace("\\", "/")
     return p.replace("data/uploads", "/uploads", 1)
+
 
 def build_upload_path(observation_id: int, original_filename: str) -> Path:
     """
