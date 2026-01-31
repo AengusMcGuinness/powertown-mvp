@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, List
+from pydantic import BaseModel
+
 
 
 @dataclass(frozen=True)
-class ScoreResult:
-    score: int  # 0..100
-    confidence: str  # "low" | "medium" | "high"
-    drivers: list[str]  # explanations
-
+class ScoreResult(BaseModel):
+    score: int
+    confidence: str
+    drivers: List[str] = []
 
 _RULES = [
     (

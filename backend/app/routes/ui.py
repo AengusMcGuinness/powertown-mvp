@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend.app import models
 from backend.app.db import get_db
-from backend.app.services.scoring import score_building
+from backend.app.services.scoring_cache import get_or_compute_building_score
 from backend.app.services.storage import build_upload_path, to_served_url
 
 router = APIRouter()
@@ -72,13 +72,7 @@ def review_home(
             # Compute best building score in this park (MVP: compute per building)
             best = -1
             for b in buildings:
-                obs_texts = (
-                    db.query(models.Observation.note_text)
-                    .filter(models.Observation.building_id == b.id)
-                    .all()
-                )
-                texts = [t[0] for t in obs_texts]
-                s = score_building(texts)
+                s = get_or_compute_building_score(db, b.id)
                 if s.score > best:
                     best = s.score
             best_score = best if best >= 0 else None
@@ -370,6 +364,9 @@ async def capture_submit(
 
     db.commit()
 
+    # Warm score cache so review pages are instant
+    get_or_compute_building_score(db, building.id)
+    
     # Redirect to the building dossier page
     return RedirectResponse(url=f"/review/buildings/{building.id}", status_code=303)
 
@@ -380,8 +377,6 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
     if not park:
         raise HTTPException(status_code=404, detail="industrial park not found")
 
-    from backend.app.services.scoring import score_building
-
     buildings = (
         db.query(models.Building)
         .filter(models.Building.industrial_park_id == park_id)
@@ -390,13 +385,7 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
 
     building_cards = []
     for b in buildings:
-        obs_texts = (
-            db.query(models.Observation.note_text)
-            .filter(models.Observation.building_id == b.id)
-            .all()
-        )
-        obs_texts = [t[0] for t in obs_texts]
-        s = score_building(obs_texts)
+        s = get_or_compute_building_score(db, b.id)
         building_cards.append({"building": b, "score": s})
 
     # Sort descending by score
@@ -486,9 +475,9 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
         .all()
     )
 
-    from backend.app.services.scoring import score_building
 
-    score = score_building([o.note_text for o in observations])
+    score = get_or_compute_building_score(db, building_id)
+
 
     obs_ids = [o.id for o in observations]
     media_by_obs: dict[int, list[models.MediaAsset]] = {oid: [] for oid in obs_ids}
