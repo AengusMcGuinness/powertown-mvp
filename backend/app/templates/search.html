@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Powertown MVP — Search</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; max-width: 980px; }
+      .muted { color: #666; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-top: 14px; }
+      a { text-decoration: none; }
+      input { width: 100%; padding: 10px; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Search</h1>
+    <p class="muted">Search parks, buildings, and observation notes.</p>
+
+    <p>
+      <a href="/review">← Review</a>
+      <span class="muted"> | </span>
+      <a href="/capture">+ New capture</a>
+    </p>
+
+    <form method="get" action="/search" class="card">
+      <label><strong>Query</strong></label>
+      <input name="q" value="{{ q }}" placeholder="e.g. transformer, HVAC, Matouk, Fall River..." />
+      <button type="submit" style="margin-top: 10px; padding: 10px 14px; font-weight: 600;">Search</button>
+    </form>
+
+    {% if q %}
+      <div class="card">
+        <div><strong>Parks</strong></div>
+        {% if parks|length == 0 %}<p class="muted">No matching parks.</p>{% endif %}
+        {% for p in parks %}
+          <div style="margin-top: 10px;">
+            <a href="/review/parks/{{ p.id }}"><strong>{{ p.name }}</strong></a>
+            <div class="muted">{{ p.location or "" }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="card">
+        <div><strong>Buildings</strong></div>
+        {% if buildings|length == 0 %}<p class="muted">No matching buildings.</p>{% endif %}
+        {% for b in buildings %}
+          <div style="margin-top: 10px;">
+            <a href="/review/buildings/{{ b.id }}"><strong>{{ b.name }}</strong></a>
+            <div class="muted">{{ b.address or "" }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="card">
+        <div><strong>Observations</strong></div>
+        {% if observations|length == 0 %}<p class="muted">No matching observations.</p>{% endif %}
+        {% for o in observations %}
+          <div style="margin-top: 10px;">
+            <div class="muted">{{ o.created_at }} — Building #{{ o.building_id }}</div>
+            <div>{{ (o.note_text or "")[:220] }}{% if o.note_text and o.note_text|length > 220 %}…{% endif %}</div>
+            <div class="muted"><a href="/review/buildings/{{ o.building_id }}">Open building dossier</a></div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </body>
+</html>

@@ -232,6 +232,29 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
     # Sort descending by score
     building_cards.sort(key=lambda x: x["score"].score, reverse=True)
 
+    # Park summary stats
+    scores = [c["score"].score for c in building_cards]
+    park_summary = {
+        "building_count": len(building_cards),
+        "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,
+        "count_70_plus": sum(1 for s in scores if s >= 70),
+        "count_50_plus": sum(1 for s in scores if s >= 50),
+    }
+    
+    top_candidates = building_cards[:3]
+    
+    # Recent activity feed (last 10 observations across park)
+    building_ids = [c["building"].id for c in building_cards]
+    recent_activity = []
+    if building_ids:
+        recent_activity = (
+            db.query(models.Observation)
+            .filter(models.Observation.building_id.in_(building_ids))
+            .order_by(models.Observation.created_at.desc())
+            .limit(10)
+            .all()
+        )
+        
     from fastapi.templating import Jinja2Templates
     templates = Jinja2Templates(directory="backend/app/templates")
 
@@ -240,7 +263,10 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
     {
         "request": request,
         "park": park,
-        "building_cards": building_cards,  # ← this name must match
+        "building_cards": building_cards,
+        "top_candidates": top_candidates,
+        "park_summary": park_summary,
+        "recent_activity": recent_activity,
     },
 )
 
@@ -285,5 +311,60 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
             "observations": observations,
             "media_by_obs": media_by_obs,
             "score": score,
+        },
+    )
+
+@router.get("/search")
+def search(request: Request, q: str = "", db: Session = Depends(get_db)):
+    term = (q or "").strip()
+    parks = []
+    buildings = []
+    observations = []
+
+    if term:
+        like = f"%{term}%"
+
+        parks = (
+            db.query(models.IndustrialPark)
+            .filter(
+                (models.IndustrialPark.name.ilike(like)) |
+                (models.IndustrialPark.location.ilike(like))
+            )
+            .order_by(models.IndustrialPark.created_at.desc())
+            .limit(25)
+            .all()
+        )
+
+        buildings = (
+            db.query(models.Building)
+            .filter(
+                (models.Building.name.ilike(like)) |
+                (models.Building.address.ilike(like))
+            )
+            .order_by(models.Building.created_at.desc())
+            .limit(25)
+            .all()
+        )
+
+        # Search observation text
+        observations = (
+            db.query(models.Observation)
+            .filter(models.Observation.note_text.ilike(like))
+            .order_by(models.Observation.created_at.desc())
+            .limit(50)
+            .all()
+        )
+
+    from fastapi.templating import Jinja2Templates
+    templates = Jinja2Templates(directory="backend/app/templates")
+
+    return templates.TemplateResponse(
+        "search.html",
+        {
+            "request": request,
+            "q": term,
+            "parks": parks,
+            "buildings": buildings,
+            "observations": observations,
         },
     )

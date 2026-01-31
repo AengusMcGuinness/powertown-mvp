@@ -25,6 +25,54 @@
       <span class="muted"> | </span>
       <a href="/export/observations.csv?park_id={{ park.id }}">Export observations</a>
     </p>
+
+
+    <div class="card">
+      <div><strong>Park Summary</strong></div>
+      <div class="muted" style="margin-top: 6px;">
+	{{ park_summary.building_count }} buildings ·
+	avg {{ park_summary.avg_score }}/100 ·
+	{{ park_summary.count_70_plus }} ≥ 70 ·
+	{{ park_summary.count_50_plus }} ≥ 50
+      </div>
+    </div>
+
+    <div class="card">
+      <div><strong>Top Candidates</strong></div>
+
+      {% if top_candidates|length == 0 %}
+      <p class="muted">No buildings yet.</p>
+      {% endif %}
+
+      {% for c in top_candidates %}
+      <div style="display:flex; justify-content: space-between; gap: 10px; margin-top: 10px;">
+	<div>
+          <strong><a href="/review/buildings/{{ c.building.id }}">{{ c.building.name }}</a></strong>
+          <div class="muted">{{ c.building.address or "" }}</div>
+          {% if c.score.drivers and c.score.drivers|length > 0 %}
+          <div class="muted">{{ c.score.drivers[0] }}{% if c.score.drivers|length > 1 %}, {{ c.score.drivers[1] }}{% endif %}</div>
+          {% endif %}
+	</div>
+	<div style="text-align:right;">
+          <div style="font-size: 18px; font-weight: 700;">{{ c.score.score }}/100</div>
+          <div class="muted">{{ c.score.confidence }}</div>
+	</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div><strong>Recent Activity</strong></div>
+      {% if recent_activity|length == 0 %}
+      <p class="muted">No observations yet.</p>
+      {% endif %}
+      {% for o in recent_activity %}
+      <div style="margin-top: 10px;">
+	<div class="muted">{{ o.created_at }} — Building #{{ o.building_id }}</div>
+	<div>{{ (o.note_text or "(no notes)")[:160] }}{% if o.note_text and o.note_text|length > 160 %}…{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
     
     <h2>Buildings</h2>
     {% if building_cards|length == 0 %}
