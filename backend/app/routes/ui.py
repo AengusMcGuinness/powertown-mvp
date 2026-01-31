@@ -7,6 +7,11 @@ from sqlalchemy.orm import Session
 from backend.app.db import get_db
 from backend.app import models
 from backend.app.services.storage import build_upload_path, to_served_url
+from backend.app.services.scoring import score_building
+
+from datetime import datetime, timedelta
+from typing import Optional
+
 
 router = APIRouter()
 
@@ -19,9 +24,15 @@ def _truncate(s: str | None, n: int = 160) -> str:
     s = " ".join(s.split())
     return s if len(s) <= n else s[:n] + "…"
 
-
 @router.get("/review")
-def review_home(request: Request, db: Session = Depends(get_db)):
+def review_home(
+    request: Request,
+    db: Session = Depends(get_db),
+    min_score: int = 0,
+    since_hours: Optional[int] = None,
+    sort: str = "last_activity",  # or "best_score"
+    only_active: bool = False,
+):
     # Show all parks (most recently created first)
     parks = (
         db.query(models.IndustrialPark)
@@ -40,6 +51,8 @@ def review_home(request: Request, db: Session = Depends(get_db)):
         building_ids = [b.id for b in buildings]
 
         last_obs = None
+
+        
         if building_ids:
             last_obs = (
                 db.query(models.Observation)
@@ -48,14 +61,67 @@ def review_home(request: Request, db: Session = Depends(get_db)):
                 .first()
             )
 
+
+
+        best_score = None
+        if building_ids:
+            # Compute best building score in this park (MVP: compute per building)
+            best = -1
+            for b in buildings:
+                obs_texts = (
+                    db.query(models.Observation.note_text)
+                    .filter(models.Observation.building_id == b.id)
+                    .all()
+                )
+                texts = [t[0] for t in obs_texts]
+                s = score_building(texts)
+                if s.score > best:
+                    best = s.score
+            best_score = best if best >= 0 else None
+        
         park_cards.append(
             {
                 "park": p,
                 "building_count": len(buildings),
                 "last_activity": (last_obs.created_at if last_obs else None),
+                "best_score": best_score,
             }
         )
 
+    # Apply filters
+    cutoff = None
+    if since_hours is not None:
+        cutoff = datetime.utcnow() - timedelta(hours=since_hours)
+
+    filtered = []
+    for c in park_cards:
+        la = c["last_activity"]
+        bs = c["best_score"]
+
+        if only_active and la is None:
+            continue
+
+        if cutoff is not None:
+            # If no activity timestamp, treat as failing the filter
+            if la is None or la < cutoff:
+                continue
+
+        if min_score and min_score > 0:
+            # If no score, treat as failing
+            if bs is None or bs < min_score:
+                continue
+
+        filtered.append(c)
+
+    park_cards = filtered
+
+    # Sorting
+    if sort == "best_score":
+        park_cards.sort(key=lambda x: (x["best_score"] is None, -(x["best_score"] or 0), x["last_activity"] is None, x["last_activity"]),)
+    else:
+        # default: last_activity desc, None last
+        park_cards.sort(key=lambda x: (x["last_activity"] is None, x["last_activity"]), reverse=True)
+        
     # Global recent activity (last 15 observations across all parks)
     recent_activity = []
     
@@ -120,13 +186,19 @@ def review_home(request: Request, db: Session = Depends(get_db)):
     templates = Jinja2Templates(directory="backend/app/templates")
 
     return templates.TemplateResponse(
-        "review_home.html",
-        {
-            "request": request,
-            "park_cards": park_cards,
-            "recent_activity": recent_activity,
+    "review_home.html",
+    {
+        "request": request,
+        "park_cards": park_cards,
+        "recent_activity": recent_activity,
+        "filters": {
+            "min_score": min_score,
+            "since_hours": since_hours or "",
+            "sort": sort,
+            "only_active": only_active,
         },
-    )
+    },
+)
 
 def _get_or_create_building(
     db: Session,

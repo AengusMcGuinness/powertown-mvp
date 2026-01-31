@@ -29,7 +29,40 @@
     {% if park_cards|length == 0 %}
       <p class="muted">No parks yet. Start with <a href="/capture">Field Capture</a>.</p>
       {% endif %}
-      
+
+      <form method="get" action="/review" class="card" style="margin-top: 14px;">
+  <div style="display:flex; gap: 12px; flex-wrap: wrap; align-items: end;">
+    <div style="flex: 1; min-width: 180px;">
+      <div class="muted" style="margin-bottom: 6px;">Min score</div>
+      <input name="min_score" value="{{ filters.min_score }}" type="number" min="0" max="100" />
+    </div>
+
+    <div style="flex: 1; min-width: 180px;">
+      <div class="muted" style="margin-bottom: 6px;">Activity in last (hours)</div>
+      <input name="since_hours" value="{{ filters.since_hours }}" type="number" min="1" />
+    </div>
+
+    <div style="flex: 1; min-width: 200px;">
+      <div class="muted" style="margin-bottom: 6px;">Sort</div>
+      <select name="sort">
+        <option value="last_activity" {% if filters.sort == "last_activity" %}selected{% endif %}>last activity</option>
+        <option value="best_score" {% if filters.sort == "best_score" %}selected{% endif %}>best score</option>
+      </select>
+    </div>
+
+    <div style="min-width: 160px;">
+      <label style="display:flex; gap: 8px; align-items: center;">
+        <input type="checkbox" name="only_active" value="true" {% if filters.only_active %}checked{% endif %} />
+        <span class="muted">only active</span>
+      </label>
+    </div>
+
+    <div>
+      <button type="submit" style="padding: 10px 14px; font-weight: 600; cursor: pointer;">Apply</button>
+      <a class="muted" href="/review" style="margin-left: 10px;">Reset</a>
+    </div>
+  </div>
+</form>
       <div class="card">
   <div style="display:flex; justify-content: space-between; align-items: baseline;">
     <div><strong>Recent Activity</strong></div>
@@ -77,9 +110,10 @@
           </strong>
           {% if c.park.location %}
             <span class="muted"> — {{ c.park.location }}</span>
-          {% endif %}
+            {% endif %}
+	    <span class="muted"> | </span>
+	    <span>{{ c.best_score or "—" }}/100 best</span>
         </div>
-
         <div style="margin-top: 8px;">
           <span class="pill">{{ c.building_count }} buildings</span>
           {% if c.last_activity %}
