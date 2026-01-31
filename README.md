@@ -117,6 +117,56 @@ Signals include:
 
 The score is intentionally heuristic and explainable, designed to support human review rather than replace it.
 
+# Bulk Offline Import & Demo Data
+
+Field prospecting often happens offline or asynchronously. To support this workflow, the MVP includes a bulk offline import pipeline that allows teams to upload structured field data after the fact, with or without associated media.
+
+## Bulk Import Options
+
+The application supports two bulk import modes:
+
+- ZIP import (with media) 
+  - Upload a single .zip file containing:
+  - a manifest.csv describing parks, buildings, and observations
+  - any referenced media files (photos, audio, business cards)
+- CSV-only import (no media)
+  - Upload a standalone manifest.csv to create parks, buildings, and observations without attachments.
+
+Both flows deduplicate parks and buildings, create append-only observations, attach media safely, and generate a detailed import report summarizing what was created or skipped.
+
+## Demo Data
+
+The repository includes reproducible demo files to test both bulk import paths:
+```
+demo_data/
+├── with_media/
+│   ├── manifest.csv
+│   ├── transformer.jpg
+│   ├── loading_dock.jpg
+│   ├── audio_note.m4a
+│   └── demo_with_media.zip
+└── csv_only/
+    ├── manifest.csv
+    └── demo_csv_only.zip
+```
+## Try it locally
+
+### 1.  Start the server
+```
+uvicorn backend.app.main:app --reload
+```
+### 2. Open
+```
+http://127.0.0.1:8000/bulk
+```
+### 3. Upload
+Either `demo_data/with_media/demo_with_media.zip` or `demo_data/with_media/demo_with_media.zip`
+After upload, the app displays an Import Report detailing:
+- rows imported vs skipped
+- observations created
+- media files attached or missing
+- affected industrial parks (with links)
+
 ## Features
 
 - Server-rendered web UI for field capture and review
@@ -126,4 +176,5 @@ The score is intentionally heuristic and explainable, designed to support human 
 - Explainable battery readiness scoring
 - CSV export for downstream mapping and analysis
 - SQLite-backed relational data model
+
 
