@@ -1,3 +1,14 @@
+# Python
 __pycache__/
 *.pyc
+
+# Virtual environments
 .venv/
+
+# Databases
+*.db
+backend/app/app.db
+
+# Uploaded media / generated data
+data/
+data/uploads/
