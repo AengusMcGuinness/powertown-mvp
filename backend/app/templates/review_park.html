@@ -17,20 +17,35 @@
 
     <p>
       <a href="/capture">← New capture</a>
+      <span class="muted"> | </span>
+      <a href="/export/csv?park_id={{ park.id }}">Export CSV</a>
+
     </p>
-
+    
     <h2>Buildings</h2>
+    {% if building_cards|length == 0 %}
+  <p class="muted">No buildings yet.</p>
+{% endif %}
 
-    {% if buildings|length == 0 %}
-      <p class="muted">No buildings yet.</p>
-    {% endif %}
-
-    {% for b in buildings %}
-      <div class="card">
-        <div><strong><a href="/review/buildings/{{ b.id }}">{{ b.name }}</a></strong></div>
-        <div class="muted">{{ b.address or "" }}</div>
-        <div class="muted">Created: {{ b.created_at }}</div>
+{% for c in building_cards %}
+  <div class="card">
+    <div style="display:flex; justify-content: space-between; gap: 10px;">
+      <div>
+        <strong>
+          <a href="/review/buildings/{{ c.building.id }}">
+            {{ c.building.name }}
+          </a>
+        </strong>
+        <div class="muted">{{ c.building.address or "" }}</div>
       </div>
-    {% endfor %}
+      <div style="text-align:right;">
+        <div style="font-size: 18px; font-weight: 700;">
+          {{ c.score.score }}/100
+        </div>
+        <div class="muted">{{ c.score.confidence }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
   </body>
 </html>

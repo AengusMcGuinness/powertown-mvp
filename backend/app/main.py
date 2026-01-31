@@ -47,9 +47,10 @@ def favicon():
     return Response(status_code=204)
 
 # --- Route wiring (add these files as you implement them) ---
-from backend.app.routes import buildings, parks, observations, ui#, media
+from backend.app.routes import buildings, parks, observations, ui, export#, media
 app.include_router(parks.router, prefix="/industrial-parks", tags=["industrial-parks"])
 app.include_router(buildings.router, prefix="/buildings", tags=["buildings"])
 app.include_router(observations.router, prefix="/observations", tags=["observations"])
 app.include_router(ui.router, tags=["ui"])
+app.include_router(export.router, prefix="/export", tags=["export"])
 # app.include_router(media.router, prefix="/media", tags=["media"])
