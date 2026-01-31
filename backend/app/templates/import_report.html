@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Powertown MVP — Import Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; max-width: 980px; }
+      .muted { color: #666; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-top: 14px; }
+      code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+      a { text-decoration: none; }
+      ul { margin-top: 8px; }
+      .ok { color: #0a7; font-weight: 700; }
+      .warn { color: #b60; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Import report</h1>
+    <p class="muted">
+      <a href="/review">← Review</a>
+      <span class="muted"> | </span>
+      <a href="/bulk">Bulk upload</a>
+      <span class="muted"> | </span>
+      <a href="/capture">+ New capture</a>
+    </p>
+
+    <div class="card">
+      <div><strong>Summary</strong></div>
+      <ul>
+        <li><span class="ok">Imported rows:</span> {{ report.imported_rows }}</li>
+        <li><span class="ok">Created observations:</span> {{ report.created_observations }}</li>
+        <li><span class="ok">Attached media files:</span> {{ report.attached_files }}</li>
+        <li><span class="warn">Skipped rows:</span> {{ report.skipped_rows }}</li>
+      </ul>
+      {% if report.touched_parks and report.touched_parks|length > 0 %}
+        <div class="muted">Parks affected:</div>
+        <ul>
+          {% for p in report.touched_parks %}
+            <li><a href="/review/parks/{{ p.id }}"><strong>{{ p.name }}</strong></a> <span class="muted">{{ p.location or "" }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    {% if report.missing_files and report.missing_files|length > 0 %}
+      <div class="card">
+        <div><strong>Missing files</strong></div>
+        <p class="muted">These were referenced in <code>files</code> but not found inside the ZIP.</p>
+        <ul>
+          {% for f in report.missing_files %}
+            <li><code>{{ f }}</code></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if report.invalid_rows and report.invalid_rows|length > 0 %}
+      <div class="card">
+        <div><strong>Invalid / skipped rows</strong></div>
+        <p class="muted">Rows missing required fields or otherwise malformed.</p>
+        <ul>
+          {% for r in report.invalid_rows %}
+            <li><code>{{ r }}</code></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </body>
+</html>
