@@ -12,6 +12,14 @@ router = APIRouter()
 
 _ALLOWED_MEDIA_TYPES = {"photo", "audio", "card", "other"}
 
+
+def _truncate(s: str | None, n: int = 160) -> str:
+    if not s:
+        return ""
+    s = " ".join(s.split())
+    return s if len(s) <= n else s[:n] + "…"
+
+
 @router.get("/review")
 def review_home(request: Request, db: Session = Depends(get_db)):
     # Show all parks (most recently created first)
@@ -243,18 +251,49 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
     
     top_candidates = building_cards[:3]
     
-    # Recent activity feed (last 10 observations across park)
+    # Recent activity feed (last 15 observations across park), including building name
     building_ids = [c["building"].id for c in building_cards]
     recent_activity = []
+    
     if building_ids:
-        recent_activity = (
+        recent_obs = (
             db.query(models.Observation)
             .filter(models.Observation.building_id.in_(building_ids))
             .order_by(models.Observation.created_at.desc())
-            .limit(10)
+            .limit(15)
             .all()
         )
         
+        # Build a lookup for building_id -> building
+        buildings_by_id = {c["building"].id: c["building"] for c in building_cards}
+        
+        # Optional: media counts per observation (nice signal)
+        obs_ids = [o.id for o in recent_obs]
+        media_counts = {}
+        photo_counts = {}
+        if obs_ids:
+            media = (
+                db.query(models.MediaAsset.observation_id, models.MediaAsset.media_type)
+                .filter(models.MediaAsset.observation_id.in_(obs_ids))
+                .all()
+            )
+            for oid, mtype in media:
+                media_counts[oid] = media_counts.get(oid, 0) + 1
+                if (mtype or "").lower() == "photo":
+                    photo_counts[oid] = photo_counts.get(oid, 0) + 1
+
+        for o in recent_obs:
+            b = buildings_by_id.get(o.building_id)
+            recent_activity.append(
+                {
+                    "observation": o,
+                    "building": b,
+                    "snippet": _truncate(o.note_text, 200),
+                    "media_count": media_counts.get(o.id, 0),
+                    "photo_count": photo_counts.get(o.id, 0),
+                }
+            )
+            
     from fastapi.templating import Jinja2Templates
     templates = Jinja2Templates(directory="backend/app/templates")
 

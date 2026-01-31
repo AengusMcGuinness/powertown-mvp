@@ -62,18 +62,43 @@
     </div>
 
     <div class="card">
-      <div><strong>Recent Activity</strong></div>
+      <div style="display:flex; justify-content: space-between; align-items: baseline;">
+	<div><strong>Recent Activity</strong></div>
+	<div class="muted">latest observations in this park</div>
+      </div>
+
       {% if recent_activity|length == 0 %}
       <p class="muted">No observations yet.</p>
       {% endif %}
-      {% for o in recent_activity %}
-      <div style="margin-top: 10px;">
-	<div class="muted">{{ o.created_at }} — Building #{{ o.building_id }}</div>
-	<div>{{ (o.note_text or "(no notes)")[:160] }}{% if o.note_text and o.note_text|length > 160 %}…{% endif %}</div>
+
+      {% for a in recent_activity %}
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+	<div class="muted">
+          {{ a.observation.created_at }}
+          {% if a.building %}
+          — <a href="/review/buildings/{{ a.building.id }}"><strong>{{ a.building.name }}</strong></a>
+          {% else %}
+          — Building #{{ a.observation.building_id }}
+          {% endif %}
+
+          {% if a.media_count and a.media_count > 0 %}
+          <span class="muted"> · </span>
+          <span>📎 {{ a.media_count }}</span>
+          {% if a.photo_count and a.photo_count > 0 %}
+          <span class="muted"> (📷 {{ a.photo_count }})</span>
+          {% endif %}
+          {% endif %}
+	</div>
+
+	{% if a.snippet %}
+        <div style="margin-top: 6px;">{{ a.snippet }}</div>
+	{% else %}
+        <div class="muted" style="margin-top: 6px;">(no notes)</div>
+	{% endif %}
       </div>
       {% endfor %}
     </div>
-    
+
     <h2>Buildings</h2>
     {% if building_cards|length == 0 %}
   <p class="muted">No buildings yet.</p>
