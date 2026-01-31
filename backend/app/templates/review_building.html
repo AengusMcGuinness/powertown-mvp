@@ -17,6 +17,23 @@
   <body>
     <h1>{{ building.name }}</h1>
     <div class="card">
+  <div style="display:flex; justify-content: space-between; align-items: center; gap: 12px;">
+    <div>
+      <strong>Status:</strong>
+      <span class="muted">{{ building.status }}</span>
+    </div>
+
+    <form method="post" action="/review/buildings/{{ building.id }}/status" style="display:flex; gap: 8px;">
+      <select name="status">
+        <option value="new" {% if building.status == "new" %}selected{% endif %}>new</option>
+        <option value="reviewed" {% if building.status == "reviewed" %}selected{% endif %}>reviewed</option>
+        <option value="shortlisted" {% if building.status == "shortlisted" %}selected{% endif %}>shortlisted</option>
+      </select>
+      <button type="submit">Update</button>
+    </form>
+  </div>
+</div>
+    <div class="card">
       <div><strong>Battery Readiness</strong></div>
       <div style="font-size: 28px; font-weight: 700;">{{ score.score }}/100</div>
       <div class="muted">Confidence: {{ score.confidence }}</div>

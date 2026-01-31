@@ -1,25 +1,47 @@
 from __future__ import annotations
 
+import csv
+import io
+import zipfile
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, Request,
                      UploadFile)
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.app import models
 from backend.app.db import get_db
 from backend.app.services.scoring_cache import get_or_compute_building_score
 from backend.app.services.storage import build_upload_path, to_served_url
-import csv
-import io
-import zipfile
-from pathlib import Path
 
 router = APIRouter()
 
 _ALLOWED_MEDIA_TYPES = {"photo", "audio", "card", "other"}
+
+
+@router.post("/review/buildings/{building_id}/status")
+def update_building_status(
+    building_id: int,
+    request: Request,
+    status: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    b = db.get(models.Building, building_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="building not found")
+
+    status = (status or "").strip().lower()
+    if status not in {"new", "reviewed", "shortlisted"}:
+        raise HTTPException(status_code=400, detail="invalid status")
+
+    b.status = status
+    db.commit()
+
+    # Return user to dossier
+    return RedirectResponse(url=f"/review/buildings/{building_id}", status_code=303)
 
 
 def _truncate(s: str | None, n: int = 160) -> str:
@@ -28,8 +50,13 @@ def _truncate(s: str | None, n: int = 160) -> str:
     s = " ".join(s.split())
     return s if len(s) <= n else s[:n] + "…"
 
+
 def _get_or_create_park_with_flag(db: Session, name: str, location: str | None):
-    existing = db.query(models.IndustrialPark).filter(models.IndustrialPark.name == name.strip()).first()
+    existing = (
+        db.query(models.IndustrialPark)
+        .filter(models.IndustrialPark.name == name.strip())
+        .first()
+    )
     if existing:
         # Fill missing location if provided
         if location and not existing.location:
@@ -41,11 +68,16 @@ def _get_or_create_park_with_flag(db: Session, name: str, location: str | None):
     return created, True
 
 
-def _get_or_create_building_with_flag(db: Session, park_id: int, building_name: str, address: str | None):
+def _get_or_create_building_with_flag(
+    db: Session, park_id: int, building_name: str, address: str | None
+):
     name = building_name.strip()
     existing = (
         db.query(models.Building)
-        .filter(models.Building.industrial_park_id == park_id, models.Building.name.ilike(name))
+        .filter(
+            models.Building.industrial_park_id == park_id,
+            models.Building.name.ilike(name),
+        )
         .first()
     )
     if existing:
@@ -53,11 +85,16 @@ def _get_or_create_building_with_flag(db: Session, park_id: int, building_name: 
     created = _get_or_create_building(db, park_id, building_name, address)
     return created, True
 
+
 @router.get("/bulk")
 def bulk_form(request: Request):
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
-    return templates.TemplateResponse("bulk_upload.html", {"request": request, "error": ""})
+    return templates.TemplateResponse(
+        "bulk_upload.html", {"request": request, "error": ""}
+    )
+
 
 @router.post("/bulk")
 async def bulk_import(
@@ -75,9 +112,14 @@ async def bulk_import(
         - attach referenced files as MediaAsset records
     """
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
-    if not zip_file or not zip_file.filename or not zip_file.filename.lower().endswith(".zip"):
+    if (
+        not zip_file
+        or not zip_file.filename
+        or not zip_file.filename.lower().endswith(".zip")
+    ):
         return templates.TemplateResponse(
             "bulk_upload.html",
             {"request": request, "error": "Please upload a .zip file."},
@@ -127,10 +169,15 @@ async def bulk_import(
 
     reader = csv.DictReader(io.StringIO(manifest_text))
     required = {"park_name", "building_name"}
-    if not reader.fieldnames or not required.issubset(set([f.strip() for f in reader.fieldnames])):
+    if not reader.fieldnames or not required.issubset(
+        set([f.strip() for f in reader.fieldnames])
+    ):
         return templates.TemplateResponse(
             "bulk_upload.html",
-            {"request": request, "error": "manifest.csv must include columns: park_name, building_name"},
+            {
+                "request": request,
+                "error": "manifest.csv must include columns: park_name, building_name",
+            },
             status_code=400,
         )
 
@@ -138,7 +185,7 @@ async def bulk_import(
     skipped_rows = 0
     created_observations = 0
     attached_files = 0
-    
+
     missing_files: list[str] = []
     invalid_rows: list[str] = []
     touched_park_ids: set[int] = set()
@@ -152,7 +199,9 @@ async def bulk_import(
         building_name = (row.get("building_name") or "").strip()
         if not park_name or not building_name:
             skipped_rows += 1
-            invalid_rows.append(f"missing required fields (park_name/building_name): {row}")
+            invalid_rows.append(
+                f"missing required fields (park_name/building_name): {row}"
+            )
             continue
 
         park_location = (row.get("park_location") or "").strip()
@@ -171,8 +220,10 @@ async def bulk_import(
 
         # Get/create park/building
         park, _ = _get_or_create_park_with_flag(db, park_name, park_location or None)
-        building, _ = _get_or_create_building_with_flag(db, park.id, building_name, building_address or None)
-        
+        building, _ = _get_or_create_building_with_flag(
+            db, park.id, building_name, building_address or None
+        )
+
         touched_park_ids.add(park.id)
 
         # Create observation
@@ -185,7 +236,7 @@ async def bulk_import(
         db.commit()
         db.refresh(obs)
         created_observations += 1
-        
+
         # Attach files
         for fname in file_names:
             # Security: prevent path traversal
@@ -237,7 +288,7 @@ async def bulk_import(
             .order_by(models.IndustrialPark.created_at.desc())
             .all()
         )
-        
+
         return templates.TemplateResponse(
             "import_report.html",
             {
@@ -267,9 +318,14 @@ async def bulk_import_csv(
     Optional: park_location, building_address, observer, note_text
     """
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="backend/app/templates")
 
-    if not csv_file or not csv_file.filename or not csv_file.filename.lower().endswith(".csv"):
+    if (
+        not csv_file
+        or not csv_file.filename
+        or not csv_file.filename.lower().endswith(".csv")
+    ):
         return templates.TemplateResponse(
             "bulk_upload.html",
             {"request": request, "error": "Please upload a .csv file."},
@@ -290,10 +346,15 @@ async def bulk_import_csv(
 
     reader = csv.DictReader(io.StringIO(text))
     required = {"park_name", "building_name"}
-    if not reader.fieldnames or not required.issubset(set([f.strip() for f in reader.fieldnames])):
+    if not reader.fieldnames or not required.issubset(
+        set([f.strip() for f in reader.fieldnames])
+    ):
         return templates.TemplateResponse(
             "bulk_upload.html",
-            {"request": request, "error": "CSV must include columns: park_name, building_name"},
+            {
+                "request": request,
+                "error": "CSV must include columns: park_name, building_name",
+            },
             status_code=400,
         )
 
@@ -310,7 +371,9 @@ async def bulk_import_csv(
         building_name = (row.get("building_name") or "").strip()
         if not park_name or not building_name:
             skipped_rows += 1
-            invalid_rows.append(f"missing required fields (park_name/building_name): {row}")
+            invalid_rows.append(
+                f"missing required fields (park_name/building_name): {row}"
+            )
             continue
 
         park_location = (row.get("park_location") or "").strip()
@@ -319,7 +382,9 @@ async def bulk_import_csv(
         note_text = (row.get("note_text") or "").strip()
 
         park, _ = _get_or_create_park_with_flag(db, park_name, park_location or None)
-        building, _ = _get_or_create_building_with_flag(db, park.id, building_name, building_address or None)
+        building, _ = _get_or_create_building_with_flag(
+            db, park.id, building_name, building_address or None
+        )
         touched_park_ids.add(park.id)
 
         obs = models.Observation(
@@ -363,7 +428,8 @@ async def bulk_import_csv(
             },
         },
     )
-    
+
+
 @router.get("/review")
 def review_home(
     request: Request,
@@ -610,8 +676,6 @@ def _get_or_create_park(
     return park
 
 
-
-
 @router.get("/capture")
 def capture_form(request: Request, db: Session = Depends(get_db)):
     # List parks for a dropdown (optional but helpful)
@@ -632,6 +696,91 @@ def capture_form(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "parks": parks,
         },
+    )
+
+
+@router.get("/export/observations.csv")
+def export_observations_csv(db: Session = Depends(get_db)):
+    """
+    Export all observations across all parks/buildings as a single CSV.
+    Includes basic joins + media counts.
+    """
+    rows = (
+        db.query(
+            models.Observation,
+            models.Building,
+            models.IndustrialPark,
+        )
+        .join(models.Building, models.Observation.building_id == models.Building.id)
+        .join(
+            models.IndustrialPark,
+            models.Building.industrial_park_id == models.IndustrialPark.id,
+        )
+        .order_by(models.Observation.created_at.desc())
+        .all()
+    )
+
+    obs_ids = [o.id for (o, b, p) in rows]
+    media_counts = {}
+    photo_counts = {}
+
+    if obs_ids:
+        media = (
+            db.query(models.MediaAsset.observation_id, models.MediaAsset.media_type)
+            .filter(models.MediaAsset.observation_id.in_(obs_ids))
+            .all()
+        )
+        for oid, mtype in media:
+            media_counts[oid] = media_counts.get(oid, 0) + 1
+            if (mtype or "").lower() == "photo":
+                photo_counts[oid] = photo_counts.get(oid, 0) + 1
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+
+    w.writerow(
+        [
+            "observation_id",
+            "created_at",
+            "observer",
+            "note_text",
+            "media_count",
+            "photo_count",
+            "building_id",
+            "building_name",
+            "building_address",
+            "building_status",
+            "park_id",
+            "park_name",
+            "park_location",
+        ]
+    )
+
+    for o, b, p in rows:
+        w.writerow(
+            [
+                o.id,
+                o.created_at,
+                o.observer or "",
+                (o.note_text or "").replace("\n", " ").strip(),
+                media_counts.get(o.id, 0),
+                photo_counts.get(o.id, 0),
+                b.id,
+                b.name,
+                b.address or "",
+                getattr(b, "status", "new") or "new",
+                p.id,
+                p.name,
+                p.location or "",
+            ]
+        )
+
+    csv_bytes = buf.getvalue().encode("utf-8")
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=observations.csv"},
     )
 
 
@@ -707,13 +856,15 @@ async def capture_submit(
 
     # Warm score cache so review pages are instant
     get_or_compute_building_score(db, building.id)
-    
+
     # Redirect to the building dossier page
     return RedirectResponse(url=f"/review/buildings/{building.id}", status_code=303)
 
 
 @router.get("/review/parks/{park_id}")
-def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
+def review_park(
+    request: Request, park_id: int, status: str = "", db: Session = Depends(get_db)
+):
     park = db.get(models.IndustrialPark, park_id)
     if not park:
         raise HTTPException(status_code=404, detail="industrial park not found")
@@ -723,6 +874,10 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
         .filter(models.Building.industrial_park_id == park_id)
         .all()
     )
+
+    status_filter = (status or "").strip().lower()
+    if status_filter in {"new", "reviewed", "shortlisted"}:
+        buildings = [b for b in buildings if (b.status or "new") == status_filter]
 
     building_cards = []
     for b in buildings:
@@ -799,6 +954,7 @@ def review_park(request: Request, park_id: int, db: Session = Depends(get_db)):
             "top_candidates": top_candidates,
             "park_summary": park_summary,
             "recent_activity": recent_activity,
+            "status_filter": status_filter,
         },
     )
 
@@ -816,9 +972,7 @@ def review_building(request: Request, building_id: int, db: Session = Depends(ge
         .all()
     )
 
-
     score = get_or_compute_building_score(db, building_id)
-
 
     obs_ids = [o.id for o in observations]
     media_by_obs: dict[int, list[models.MediaAsset]] = {oid: [] for oid in obs_ids}

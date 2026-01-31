@@ -25,6 +25,13 @@
       <span class="muted"> | </span>
       <a href="/export/observations.csv?park_id={{ park.id }}">Export observations</a>
     </p>
+    <p class="muted">
+  Filter:
+  <a href="/review/parks/{{ park.id }}">all</a> |
+  <a href="/review/parks/{{ park.id }}?status=new">new</a> |
+  <a href="/review/parks/{{ park.id }}?status=reviewed">reviewed</a> |
+  <a href="/review/parks/{{ park.id }}?status=shortlisted">shortlisted</a>
+</p>
 
 
     <div class="card">

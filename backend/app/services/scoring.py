@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Iterable, List
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 
 @dataclass(frozen=True)
@@ -12,6 +12,7 @@ class ScoreResult(BaseModel):
     score: int
     confidence: str
     drivers: List[str] = []
+
 
 _RULES = [
     (

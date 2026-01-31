@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-from datetime import datetime
 import datetime as dt
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import (Column, DateTime, Float, ForeignKey, Integer, String,
+                        Text, UniqueConstraint)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
 
+
 class BuildingScoreCache(Base):
     __tablename__ = "building_score_cache"
-    __table_args__ = (UniqueConstraint("building_id", "version", name="uq_score_cache_building_version"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "building_id", "version", name="uq_score_cache_building_version"
+        ),
+    )
 
     id = Column(Integer, primary_key=True)
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
@@ -23,25 +30,29 @@ class BuildingScoreCache(Base):
     updated_at = Column(DateTime, nullable=False, default=dt.datetime.utcnow)
 
     building = relationship("Building")
-    
+
 
 class BuildingScore(Base):
     __tablename__ = "building_scores"
-    __table_args__ = (UniqueConstraint("building_id", name="uq_building_scores_building_id"),)
+    __table_args__ = (
+        UniqueConstraint("building_id", name="uq_building_scores_building_id"),
+    )
 
     id = Column(Integer, primary_key=True)
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
 
     score = Column(Integer, nullable=False)
     confidence = Column(String, nullable=False, default="unknown")
-    drivers = Column(Text, nullable=False, default="")  # store as JSON string for simplicity
+    drivers = Column(
+        Text, nullable=False, default=""
+    )  # store as JSON string for simplicity
 
     version = Column(String, nullable=False, default="v1")
     input_hash = Column(String, nullable=False)  # hash of all observation note_text
     updated_at = Column(DateTime, nullable=False, default=dt.datetime.utcnow)
 
     building = relationship("Building")
-    
+
 
 class IndustrialPark(Base):
     __tablename__ = "industrial_parks"
@@ -58,6 +69,8 @@ class IndustrialPark(Base):
 
 class Building(Base):
     __tablename__ = "buildings"
+
+    status = Column(String, nullable=False, default="new")
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     industrial_park_id: Mapped[int] = mapped_column(

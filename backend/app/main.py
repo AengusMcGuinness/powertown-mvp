@@ -50,8 +50,9 @@ def favicon():
 
 
 # --- Route wiring (add these files as you implement them) ---
-from backend.app.routes import (buildings, export,  # , media
-                                export_observations, observations, parks, ui)
+from backend.app.routes import export  # , media
+from backend.app.routes import (buildings, export_observations, observations,
+                                parks, ui)
 
 app.include_router(parks.router, prefix="/industrial-parks", tags=["industrial-parks"])
 app.include_router(buildings.router, prefix="/buildings", tags=["buildings"])
