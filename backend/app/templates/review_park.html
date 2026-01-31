@@ -15,11 +15,13 @@
     <h1>{{ park.name }}</h1>
     <p class="muted">{{ park.location or "" }}</p>
 
+    
     <p>
-      <a href="/capture">← New capture</a>
+      <a href="/review">← Back to all parks</a>
+      <span class="muted"> | </span>
+      <a href="/capture">+ New capture</a>
       <span class="muted"> | </span>
       <a href="/export/csv?park_id={{ park.id }}">Export CSV</a>
-
     </p>
     
     <h2>Buildings</h2>

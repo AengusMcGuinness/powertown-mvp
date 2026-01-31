@@ -16,12 +16,24 @@
   </head>
   <body>
     <h1>{{ building.name }}</h1>
+    <div class="card">
+      <div><strong>Battery Readiness</strong></div>
+      <div style="font-size: 28px; font-weight: 700;">{{ score.score }}/100</div>
+      <div class="muted">Confidence: {{ score.confidence }}</div>
+      <ul>
+	{% for d in score.drivers %}
+	<li>{{ d }}</li>
+	{% endfor %}
+      </ul>
+    </div>
     <p class="muted">{{ building.address or "" }}</p>
 
     <p>
       <a href="/capture">← New capture</a>
       <span class="muted"> | </span>
       <a href="/review/parks/{{ building.industrial_park_id }}">← Back to park</a>
+      <span class="muted"> | </span>
+      <a href="/review">←Review</a>
       <span class="muted"> | </span>
       <a href="/docs" target="_blank">API docs</a>
     </p>
