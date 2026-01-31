@@ -56,6 +56,66 @@ def review_home(request: Request, db: Session = Depends(get_db)):
             }
         )
 
+    # Global recent activity (last 15 observations across all parks)
+    recent_activity = []
+    
+    recent_obs = (
+        db.query(models.Observation)
+        .order_by(models.Observation.created_at.desc())
+        .limit(15)
+        .all()
+    )
+
+    if recent_obs:
+        # Load buildings and parks for lookup
+        building_ids = [o.building_id for o in recent_obs]
+
+        buildings = (
+            db.query(models.Building)
+            .filter(models.Building.id.in_(building_ids))
+            .all()
+        )
+        buildings_by_id = {b.id: b for b in buildings}
+
+        park_ids = [b.industrial_park_id for b in buildings]
+        parks = (
+            db.query(models.IndustrialPark)
+            .filter(models.IndustrialPark.id.in_(park_ids))
+            .all()
+        )
+        parks_by_id = {p.id: p for p in parks}
+
+        # Media counts per observation (optional but very useful)
+        obs_ids = [o.id for o in recent_obs]
+        media_counts = {}
+        photo_counts = {}
+
+        media = (
+            db.query(models.MediaAsset.observation_id, models.MediaAsset.media_type)
+            .filter(models.MediaAsset.observation_id.in_(obs_ids))
+            .all()
+        )
+
+        for oid, mtype in media:
+            media_counts[oid] = media_counts.get(oid, 0) + 1
+            if (mtype or "").lower() == "photo":
+                photo_counts[oid] = photo_counts.get(oid, 0) + 1
+
+        for o in recent_obs:
+            b = buildings_by_id.get(o.building_id)
+            p = parks_by_id.get(b.industrial_park_id) if b else None
+
+            recent_activity.append(
+                {
+                    "observation": o,
+                    "building": b,
+                    "park": p,
+                    "snippet": _truncate(o.note_text, 200),
+                    "media_count": media_counts.get(o.id, 0),
+                    "photo_count": photo_counts.get(o.id, 0),
+                }
+            )
+
     from fastapi.templating import Jinja2Templates
     templates = Jinja2Templates(directory="backend/app/templates")
 
@@ -64,6 +124,7 @@ def review_home(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "park_cards": park_cards,
+            "recent_activity": recent_activity,
         },
     )
 

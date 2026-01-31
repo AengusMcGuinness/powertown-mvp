@@ -28,8 +28,47 @@
 
     {% if park_cards|length == 0 %}
       <p class="muted">No parks yet. Start with <a href="/capture">Field Capture</a>.</p>
-    {% endif %}
+      {% endif %}
+      
+      <div class="card">
+  <div style="display:flex; justify-content: space-between; align-items: baseline;">
+    <div><strong>Recent Activity</strong></div>
+    <div class="muted">across all parks</div>
+  </div>
 
+  {% if recent_activity|length == 0 %}
+    <p class="muted">No observations yet.</p>
+  {% endif %}
+
+  {% for a in recent_activity %}
+    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+      <div class="muted">
+        {{ a.observation.created_at }}
+        {% if a.park %}
+          — <a href="/review/parks/{{ a.park.id }}"><strong>{{ a.park.name }}</strong></a>
+        {% endif %}
+        {% if a.building %}
+          — <a href="/review/buildings/{{ a.building.id }}">{{ a.building.name }}</a>
+        {% endif %}
+
+        {% if a.media_count and a.media_count > 0 %}
+          <span class="muted"> · </span>
+          <span>📎 {{ a.media_count }}</span>
+          {% if a.photo_count and a.photo_count > 0 %}
+            <span class="muted">(📷 {{ a.photo_count }})</span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {% if a.snippet %}
+        <div style="margin-top: 6px;">{{ a.snippet }}</div>
+      {% else %}
+        <div class="muted" style="margin-top: 6px;">(no notes)</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+      
     {% for c in park_cards %}
       <div class="card">
         <div>
